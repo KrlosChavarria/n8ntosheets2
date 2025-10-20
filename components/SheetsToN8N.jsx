@@ -217,16 +217,28 @@ export default function SheetsToN8N() {
     if (spreadsheetId && sheetName) fetchValues(spreadsheetId, sheetName);
   }, [spreadsheetId, sheetName]);
 
-  const handleUseManualUrl = () => {
-  const id = parseSpreadsheetId(sheetUrl);
-  if (id) {
+  const handleUseManualUrl = async () => {
+    const id = parseSpreadsheetId(sheetUrl);
+    if (!id) {
+      showToast("error", "URL/ID no válido");
+      return;
+    }
+    
+    if (!token) {
+      showToast("error", "Primero debes conectarte con Google");
+      return;
+    }
+
+    // Resetear estado previo
+    setSheetName("");
+    setTabs([]);
+    setValues([]);
+    
+    // Actualizar spreadsheetId y cargar tabs
     setSpreadsheetId(id);
-    fetchTabs(id);
+    await fetchTabs(id);
     showToast("success", "Spreadsheet seleccionado desde URL/ID");
-  } else {
-    showToast("error", "URL/ID no válido");
-  }
-};
+  };
 
   // Enviar datos a n8n a través del proxy
   const handleSendToN8N = async () => {
@@ -255,6 +267,13 @@ export default function SheetsToN8N() {
         // Por si quieres reconstruir la celda en n8n
         preguntaRow,
         respuestaRow,
+        modeloIA,
+        selectedColIndex2,
+        colLetter2,
+        preguntaRow2,
+        respuestaRow2,
+        preguntaPreview2,
+        respuestaPreview2,
       };
 
       const resp = await fetch("/api/n8n", {
