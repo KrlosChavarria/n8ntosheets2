@@ -29,6 +29,11 @@ export default function SheetsToN8N() {
   const [sheetName, setSheetName] = useState("");
   const [loadingTabs, setLoadingTabs] = useState(false);
 
+  // Dropdown #3: Respuesta
+  const [selectedColIndex2, setSelectedColIndex2] = useState(0);
+  const [preguntaRow2, setPreguntaRow2] = useState(2);
+  const [respuestaRow2, setRespuestaRow2] = useState(3);
+
   // Datos de la hoja seleccionada
   const [values, setValues] = useState([]); // matriz de celdas
   const [loadingValues, setLoadingValues] = useState(false);
@@ -44,6 +49,9 @@ export default function SheetsToN8N() {
   const preguntaPreview = useMemo(() => safeCell(values, preguntaRow - 1, selectedColIndex), [values, preguntaRow, selectedColIndex]);
   const respuestaPreview = useMemo(() => safeCell(values, respuestaRow - 1, selectedColIndex), [values, respuestaRow, selectedColIndex]);
 
+  const colLetter2 = indexToColumnLetter(selectedColIndex2);
+  const preguntaPreview2 = values?.[preguntaRow2 - 1]?.[selectedColIndex2];
+  const respuestaPreview2 = values?.[respuestaRow2 - 1]?.[selectedColIndex2];
   // Toast helper
   const showToast = (type, message, timeout = 2600) => {
     setToast({ open: true, type, message });
@@ -473,13 +481,13 @@ export default function SheetsToN8N() {
           )}
         </div>
 
-        {/* Selección de columna */}
+        {/* Selección de columna 1 */}
         <div className="space-y-2">
           <label className="text-sm font-medium flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="size-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M4 4h16v16H4z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Columna para Pregunta/Respuesta
+            Columna 1 para extraer Pregunta
           </label>
           <div className="relative">
             <select
@@ -508,6 +516,31 @@ export default function SheetsToN8N() {
           <p className="text-xs text-gray-500">Encabezado: <span className="font-medium">{headers?.[selectedColIndex] ?? "(sin encabezado)"}</span></p>
         </div>
 
+        {/* Selección de columna 2 */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="size-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M4 4h16v16H4z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Columna 2 para insertar Respuesta
+          </label>
+          <div className="relative">
+            <select
+              disabled={!values?.length || loadingValues}
+              className="w-full border rounded-xl p-2 pr-10 bg-white disabled:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition"
+              value={selectedColIndex2}
+              onChange={(e) => setSelectedColIndex2(Number(e.target.value))}
+            >
+              {(headers.length ? headers : Array(values?.[0]?.length || 1).fill(null)).map((h, i) => (
+                <option key={i} value={i}>
+                  {`${indexToColumnLetter(i)} · ${h ? String(h).slice(0, 120) : "(sin encabezado)"}`}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▼</div>
+          </div>
+          <p className="text-xs text-gray-500">Encabezado: <span className="font-medium">{headers?.[selectedColIndex2] ?? "(sin encabezado)"}</span></p>
+        </div>
         {/* Fila para pregunta y respuesta */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1">
