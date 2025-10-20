@@ -217,16 +217,16 @@ export default function SheetsToN8N() {
     if (spreadsheetId && sheetName) fetchValues(spreadsheetId, sheetName);
   }, [spreadsheetId, sheetName]);
 
-  // Usar URL/ID manual
   const handleUseManualUrl = () => {
-    const id = parseSpreadsheetId(sheetUrl);
-    if (id) {
-      setSpreadsheetId(id);
-      showToast("success", "Spreadsheet seleccionado desde URL/ID");
-    } else {
-      showToast("error", "URL/ID no válido");
-    }
-  };
+  const id = parseSpreadsheetId(sheetUrl);
+  if (id) {
+    setSpreadsheetId(id);
+    fetchTabs(id);
+    showToast("success", "Spreadsheet seleccionado desde URL/ID");
+  } else {
+    showToast("error", "URL/ID no válido");
+  }
+};
 
   // Enviar datos a n8n a través del proxy
   const handleSendToN8N = async () => {
@@ -390,11 +390,15 @@ export default function SheetsToN8N() {
               value={spreadsheetId}
               onChange={(e) => setSpreadsheetId(e.target.value)}
             >
-              {spreadsheetList.map((f) => (
+            {spreadsheetList.length === 0 ? (
+              <option value="">Cargando spreadsheets...</option>
+            ) : (
+              spreadsheetList.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name}
                 </option>
-              ))}
+              ))
+            )}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▼</div>
           </div>
@@ -465,11 +469,15 @@ export default function SheetsToN8N() {
               value={sheetName}
               onChange={(e) => setSheetName(e.target.value)}
             >
-              {tabs.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
+              {tabs.length === 0 ? (
+                <option value="">Selecciona un spreadsheet primero...</option>
+              ) : (
+                tabs.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))
+              )}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▼</div>
           </div>
@@ -499,11 +507,14 @@ export default function SheetsToN8N() {
               value={selectedColIndex}
               onChange={(e) => setSelectedColIndex(Number(e.target.value))}
             >
-              {(headers.length ? headers : Array(values?.[0]?.length || 1).fill(null)).map((h, i) => (
-                <option key={i} value={i}>
+              {(!values || values.length === 0) ? (
+  <option value="0">Cargando columnas...</option>
+) : (
+  (headers.length ? headers : Array(values?.[0]?.length || 1).fill(null)).map((h, i) => (                <option key={i} value={i}>
                   {`${indexToColumnLetter(i)} · ${h ? String(h).slice(0, 120) : "(sin encabezado)"}`}
                 </option>
-              ))}
+                  ))
+)}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▼</div>
           </div>
