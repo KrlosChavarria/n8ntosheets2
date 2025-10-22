@@ -35,7 +35,7 @@ export default function SheetsToN8N() {
   const [respuestaRow2, setRespuestaRow2] = useState(3);
 
   // Modelo IA 
-  const [modeloIA, setModeloIA] = useState("ftjob-XLuzK5Yn1in5E6DkuA1BdMAm");
+  const [modeloIA, setModeloIA] = useState("ft:gpt-4.1-mini-2025-04-14:personal:poligrama-problemas-llm:CR1f4KpV");
 
   // Datos de la hoja seleccionada
   const [values, setValues] = useState([]); // matriz de celdas
