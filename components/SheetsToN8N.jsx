@@ -601,11 +601,11 @@ export default function SheetsToN8N() {
               value={modeloIA}
               onChange={(e) => setModeloIA(e.target.value)}
             >
-              <option value="ftjob-XLuzK5Yn1in5E6DkuA1BdMAm">Problemas</option>
-              <option value="ftjob-wcoqR1Fu8Tlbk4WIJMh41Uqi">Variado</option>
-              <option value="ftjob-9BQHSZwsfC1pgL63HWrhXAz4">Personajes</option>
-              <option value="ftjob-OitH9Li9INncjyWueIHYf7PL">Seguridad</option>
-              <option value="ftjob-s2PS1MbPLxFIXbTJA8tnyIa2">Medios</option>
+              <option value="ft:gpt-4.1-mini-2025-04-14:personal:poligrama-problemas-llm:CR1f4KpV">Problemas</option>
+              <option value="ft:gpt-4.1-mini-2025-04-14:personal:poligrama-variado-llm:CR1dqGdY">Variado</option>
+              <option value="ft:gpt-4.1-mini-2025-04-14:personal:poligrama-personajes-llm:CR1hh9UF">Personajes</option>
+              <option value="ft:gpt-4.1-mini-2025-04-14:personal:poligrama-seguridad-llm:CR16sSV9">Seguridad</option>
+              <option value="ft:gpt-4.1-mini-2025-04-14:personal:poligrama-medios-llm:CR0q8NAS">Medios</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▼</div>
           </div>
