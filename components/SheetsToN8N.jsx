@@ -273,7 +273,7 @@ export default function SheetsToN8N() {
         // Config para que n8n sepa qué columna referenciar si lo necesitas
         selectedColumnIndex: selectedColIndex,
         selectedColumnLetter: colLetter,
-        selectedColumnHeader: headerName, // ejemplo: "6. En su opinión, …"
+        selectedColumnHeader2: headers?.[selectedColIndex2] ?? "", 
         // Valores concretos solicitados
         pregunta: preguntaValue,
         respuesta: respuestaValue,
