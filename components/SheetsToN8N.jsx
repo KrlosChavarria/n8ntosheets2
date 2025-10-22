@@ -183,8 +183,10 @@ export default function SheetsToN8N() {
   };
 
   useEffect(() => {
-    if (spreadsheetId) fetchTabs(spreadsheetId);
-  }, [spreadsheetId]);
+    if (spreadsheetId && spreadsheetList.some ((s) => s.id === spreadsheetId)) {
+    fetchTabs(spreadsheetId);
+    }
+  }, [spreadsheetId, spreadsheetList]);
 
   // Cargar valores de una hoja (primeras N filas y columnas)
   const fetchValues = async (id, tabName) => {
@@ -236,7 +238,18 @@ export default function SheetsToN8N() {
     
     // Actualizar spreadsheetId y cargar tabs
     setSpreadsheetId(id);
-    await fetchTabs(id);
+
+    //cargar tabs
+    setLoadingTabs(true);
+    window.gapi.client.setToken({ access_token: token });
+    const res = await window.gapi.client.sheets.spreadsheets.get({
+      spreadsheetId: id,
+      includeGridData: false,
+    });
+    const titles = res.result.sheets?.map((s) => s.properties?.title).filter(Boolean) ?? [];
+    setTabs(titles);
+    setSheetName(titles[0] || "");
+    setLoadingTabs(false);
     showToast("success", "Spreadsheet seleccionado desde URL/ID");
   };
 
