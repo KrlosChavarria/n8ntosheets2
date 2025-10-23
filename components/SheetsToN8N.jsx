@@ -255,53 +255,84 @@ export default function SheetsToN8N() {
 
   // Enviar datos a n8n a través del proxy
   const handleSendToN8N = async () => {
-    if (!spreadsheetId || !sheetName) {
-      showToast("error", "Selecciona spreadsheet y hoja");
+  if (!spreadsheetId || !sheetName) {
+    showToast("error", "Selecciona spreadsheet y hoja");
+    return;
+  }
+
+  // Validar que haya datos cargados
+  if (!values || values.length === 0) {
+    showToast("error", "No hay datos cargados de la hoja");
+    return;
+  }
+
+  try {
+    setIsSending(true);
+
+    // Extraer el nombre de la pregunta (header de columna AC)
+    const nombrePregunta = headers[selectedColIndex] || "";
+    
+    // Extraer la respuesta abierta (celda específica que el usuario seleccionó)
+    const respuestaAbierta = safeCell(values, preguntaRow - 1, selectedColIndex);
+    
+    // Columna donde se insertará la respuesta decodificada
+    const columnaRespuesta = indexToColumnLetter(selectedColIndex2);
+    const headerRespuesta = headers[selectedColIndex2] || "";
+
+    // Validar que la respuesta no esté vacía
+    if (!respuestaAbierta || respuestaAbierta.toString().trim() === "") {
+      showToast("error", "La celda de pregunta está vacía");
+      setIsSending(false);
       return;
     }
 
-    // Asegura que existan headers
-    const headerName = (headers?.[selectedColIndex] ?? "").toString().trim();
-    const headerName2 = (headers?.[selectedColIndex2] ?? "").toString().trim();
+    const payload = {
+      // Identificación del spreadsheet y hoja
+      spreadsheetId,
+      sheetName,
+      
+      // Información de la PREGUNTA (columna AC en tu caso)
+      preguntaColumna: colLetter, // "AC"
+      preguntaHeader: nombrePregunta, // "18. Mencione por favor una acción..."
+      preguntaFila: preguntaRow, // Fila donde está la pregunta (ej: 2)
+      preguntaValor: respuestaAbierta, // El texto real: "Bachee Calles de todo Guadalajara"
+      
+      // Información de la RESPUESTA (columna AD en tu caso)
+      respuestaColumna: columnaRespuesta, // "AD"
+      respuestaHeader: headerRespuesta, // "DECO 18"
+      respuestaFila: respuestaRow, // Fila donde se insertará (ej: 3)
+      
+      // Modelo de IA
+      modeloIA,
+      
+      // Información adicional que n8n podría necesitar
+      rangoCompleto: `${colLetter}${preguntaRow}:${columnaRespuesta}${respuestaRow}`,
+    };
 
-    try {
-      setIsSending(true);
-      const payload = {
-        spreadsheetId,
-        sheetName,
-        // Config para que n8n sepa qué columna referenciar si lo necesitas
-        selectedColumnIndex: selectedColIndex, // Índice de la columna de la pregunta
-        selectedColumnLetter: colLetter, // pregunta
-        selectedColumnHeader: headerName, 
-        preguntaRow,
-        respuestaRow,
-        modeloIA,
-        selectedColIndex2, // Índice de la columna de la respuesta
-        preguntaRow2,
-        respuestaRow2,
-        preguntaPreview2,
-        respuestaPreview2,
-      };
+    console.log("📤 Enviando a n8n:", payload); // Para debugging
 
-      const resp = await fetch("/api/n8n", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const text = await resp.text();
-      if (resp.ok) {
-        setStatus(`Enviado a n8n: ${text}`);
-        showToast("success", "Enviado a n8n correctamente");
-      } else {
-        showToast("error", `n8n respondió ${resp.status}`);
-      }
-    } catch (e) {
-      console.error(e);
-      showToast("error", "Error enviando a n8n");
-    } finally {
-      setIsSending(false);
+    const resp = await fetch("/api/n8n", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    
+    const text = await resp.text();
+    
+    if (resp.ok) {
+      setStatus(`Enviado: ${text}`);
+      showToast("success", "Procesado correctamente");
+    } else {
+      setStatus(`Error ${resp.status}: ${text}`);
+      showToast("error", `n8n respondió con error ${resp.status}`);
     }
-  };
+  } catch (e) {
+    console.error("Error enviando a n8n:", e);
+    showToast("error", "Error de conexión con n8n");
+  } finally {
+    setIsSending(false);
+  }
+};
 
   // Utils
   function indexToColumnLetter(index) {
