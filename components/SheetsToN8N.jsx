@@ -262,8 +262,7 @@ export default function SheetsToN8N() {
 
     // Asegura que existan headers
     const headerName = (headers?.[selectedColIndex] ?? "").toString().trim();
-    const preguntaValue = preguntaPreview ?? "";
-    const respuestaValue = respuestaPreview ?? "";
+    const headerName2 = (headers?.[selectedColIndex2] ?? "").toString().trim();
 
     try {
       setIsSending(true);
@@ -275,13 +274,11 @@ export default function SheetsToN8N() {
         selectedColumnLetter: colLetter,
         selectedColumnHeader2: headers?.[selectedColIndex2] ?? "", 
         // Valores concretos solicitados
-        pregunta: preguntaValue,
-        respuesta: respuestaValue,
-        // Por si quieres reconstruir la celda en n8n
+        pregunta: headerName,
         preguntaRow,
         respuestaRow,
         modeloIA,
-        selectedColIndex2,
+        selectedColIndex2: headerName2,
         colLetter2,
         preguntaRow2,
         respuestaRow2,
