@@ -270,16 +270,13 @@ export default function SheetsToN8N() {
         spreadsheetId,
         sheetName,
         // Config para que n8n sepa qué columna referenciar si lo necesitas
-        selectedColumnIndex: selectedColIndex,
-        selectedColumnLetter: colLetter,
-        selectedColumnHeader2: headers?.[selectedColIndex2] ?? "", 
-        // Valores concretos solicitados
-        pregunta: headerName,
+        selectedColumnIndex: selectedColIndex, // Índice de la columna de la pregunta
+        selectedColumnLetter: colLetter, // pregunta
+        selectedColumnHeader: headerName, 
         preguntaRow,
         respuestaRow,
         modeloIA,
-        selectedColIndex2: headerName2,
-        colLetter2,
+        selectedColIndex2, // Índice de la columna de la respuesta
         preguntaRow2,
         respuestaRow2,
         preguntaPreview2,
