@@ -34,8 +34,8 @@ export default function SheetsToN8N() {
   const [preguntaRow2, setPreguntaRow2] = useState(2);
   const [respuestaRow2, setRespuestaRow2] = useState(3);
 
-  // Modelo IA 
-  const [modeloIA, setModeloIA] = useState("ft:gpt-4.1-mini-2025-04-14:personal:poligrama-problemas-llm:CR1f4KpV");
+  // Tipo de pregunta
+  const [tipoPregunta, setTipoPregunta] = useState("Problemas");
 
   // Datos de la hoja seleccionada
   const [values, setValues] = useState([]); // matriz de celdas
@@ -302,8 +302,7 @@ export default function SheetsToN8N() {
       respuestaHeader: headerRespuesta, // "DECO 18"
       respuestaFila: respuestaRow, // Fila donde se insertará (ej: 3)
       
-      // Modelo de IA
-      modeloIA,
+      tipoPregunta, // "Problemas" | "Seguridad" | "Personajes" | "Transporte" | "Voto/partidos" | "Medios" | "Variado"
       
       // Información adicional que n8n podría necesitar
       rangoCompleto: `${colLetter}${preguntaRow}:${columnaRespuesta}${respuestaRow}`,
@@ -612,7 +611,7 @@ export default function SheetsToN8N() {
           </div>
           <p className="text-xs text-gray-500">Encabezado: <span className="font-medium">{headers?.[selectedColIndex2] ?? "(sin encabezado)"}</span></p>
         </div>
-        {/* Dropdown Tipo de Modelo */}
+        {/* Dropdown Tipo de pregunta */}
         <div className="space-y-2">
           <label className="text-sm font-medium flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="size-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -623,8 +622,8 @@ export default function SheetsToN8N() {
           <div className="relative">
             <select
               className="w-full border rounded-xl p-2 pr-10 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition"
-              value={modeloIA}
-              onChange={(e) => setModeloIA(e.target.value)}
+              value={tipoPregunta}
+              onChange={(e) => setTipoPregunta(e.target.value)}
             >
               <option value="Problemas">Problemas</option>
               <option value="Variado">Variado</option>
