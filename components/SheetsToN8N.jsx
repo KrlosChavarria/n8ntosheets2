@@ -636,44 +636,12 @@ export default function SheetsToN8N() {
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▼</div>
           </div>
-          <p className="text-xs text-gray-500">ID seleccionado: <span className="font-mono font-medium text-[10px]">{modeloIA}</span></p>
-        </div>
-        {/* Fila para pregunta y respuesta */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Fila para <span className="font-semibold">pregunta</span></label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={1}
-                value={preguntaRow}
-                onChange={(e) => setPreguntaRow(Number(e.target.value))}
-                className="w-28 border rounded-xl p-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              />
-              <span className="text-xs text-gray-500">(1 = encabezado)</span>
-            </div>
-            <p className="text-xs text-gray-600">Vista previa: <span className="font-medium break-all">{String(preguntaPreview ?? "").slice(0, 200) || "(vacío)"}</span></p>
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Fila para <span className="font-semibold">respuesta</span></label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={1}
-                value={respuestaRow}
-                onChange={(e) => setRespuestaRow(Number(e.target.value))}
-                className="w-28 border rounded-xl p-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              />
-              <span className="text-xs text-gray-500">(ej. 2 = primer dato)</span>
-            </div>
-            <p className="text-xs text-gray-600">Vista previa: <span className="font-medium break-all">{String(respuestaPreview ?? "").slice(0, 200) || "(vacío)"}</span></p>
-          </div>
         </div>
 
         {/* Enviar */}
         <div className="flex items-center justify-end gap-3">
           <p className="text-xs text-gray-500">
-            {spreadsheetId && sheetName ? `Listo: Col ${colLetter} · ${headers?.[selectedColIndex] ?? "(sin encabezado)"}` : "Selecciona spreadsheet y hoja"}
+            {spreadsheetId && sheetName ? `Listo: Col ${colLetter} · ${headers?.[selectedColIndex] ?? "(sin encabezado)"}` : ""}
           </p>
           <button
             onClick={handleSendToN8N}
