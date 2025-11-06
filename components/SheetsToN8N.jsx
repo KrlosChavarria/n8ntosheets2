@@ -55,6 +55,10 @@ export default function SheetsToN8N() {
   const colLetter2 = indexToColumnLetter(selectedColIndex2);
   const preguntaPreview2 = values?.[preguntaRow2 - 1]?.[selectedColIndex2];
   const respuestaPreview2 = values?.[respuestaRow2 - 1]?.[selectedColIndex2];
+
+  // 'idle' | 'sending' | 'queued' | 'error'
+  const [progress, setProgress] = useState("idle"); 
+  const [sendLocked, setSendLocked] = useState(false);
   // Toast helper
   const showToast = (type, message, timeout = 2600) => {
     setToast({ open: true, type, message });
@@ -96,6 +100,14 @@ export default function SheetsToN8N() {
       }
     })();
   }, []);
+
+
+useEffect(() => {
+  setSendLocked(false);
+  setProgress("idle");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [spreadsheetId, sheetName, selectedColIndex, selectedColIndex2, preguntaRow, respuestaRow, tipoPregunta]);
+
 
   // Extraer ID de URL o aceptar ID directo
   const parseSpreadsheetId = (urlOrId) => {
@@ -255,12 +267,16 @@ export default function SheetsToN8N() {
 
   // Enviar datos a n8n a través del proxy
   const handleSendToN8N = async () => {
+  if (sendLocked) {
+    showToast("info", "Ya se envió. Espera a que n8n procese o cambia algún parámetro.");
+    return;
+  }
+
   if (!spreadsheetId || !sheetName) {
     showToast("error", "Selecciona spreadsheet y hoja");
     return;
   }
 
-  // Validar que haya datos cargados
   if (!values || values.length === 0) {
     showToast("error", "No hay datos cargados de la hoja");
     return;
@@ -268,70 +284,67 @@ export default function SheetsToN8N() {
 
   try {
     setIsSending(true);
+    setSendLocked(true);        // 🔒 bloqueamos reintentos
+    setProgress("sending");
 
-    // Extraer el nombre de la pregunta (header de columna AC)
     const nombrePregunta = headers[selectedColIndex] || "";
-    
-    // Extraer la respuesta abierta (celda específica que el usuario seleccionó)
     const respuestaAbierta = safeCell(values, preguntaRow - 1, selectedColIndex);
-    
-    // Columna donde se insertará la respuesta decodificada
     const columnaRespuesta = indexToColumnLetter(selectedColIndex2);
     const headerRespuesta = headers[selectedColIndex2] || "";
 
-    // Validar que la respuesta no esté vacía
     if (!respuestaAbierta || respuestaAbierta.toString().trim() === "") {
       showToast("error", "La celda de pregunta está vacía");
       setIsSending(false);
+      setSendLocked(false);
+      setProgress("idle");
       return;
     }
 
     const payload = {
-      // Identificación del spreadsheet y hoja
       spreadsheetId,
       sheetName,
-      
-      // Información de la PREGUNTA (columna AC en tu caso)
-      preguntaColumna: colLetter, // "AC"
-      preguntaHeader: nombrePregunta, // "18. Mencione por favor una acción..."
-      preguntaFila: preguntaRow, // Fila donde está la pregunta (ej: 2)
-      preguntaValor: respuestaAbierta, // El texto real: "Bachee Calles de todo Guadalajara"
-      
-      // Información de la RESPUESTA (columna AD en tu caso)
-      respuestaColumna: columnaRespuesta, // "AD"
-      respuestaHeader: headerRespuesta, // "DECO 18"
-      respuestaFila: respuestaRow, // Fila donde se insertará (ej: 3)
-      
-      tipoPregunta, // "Problemas" | "Seguridad" | "Personajes" | "Transporte" | "Voto/partidos" | "Medios" | "Variado"
-      
-      // Información adicional que n8n podría necesitar
+      preguntaColumna: colLetter,
+      preguntaHeader: nombrePregunta,
+      preguntaFila: preguntaRow,
+      preguntaValor: respuestaAbierta,
+      respuestaColumna: columnaRespuesta,
+      respuestaHeader: headerRespuesta,
+      respuestaFila: respuestaRow,
+      tipoPregunta,
       rangoCompleto: `${colLetter}${preguntaRow}:${columnaRespuesta}${respuestaRow}`,
     };
 
-    console.log("📤 Enviando a n8n:", payload); // Para debugging
+    console.log("📤 Enviando a n8n:", payload);
 
     const resp = await fetch("/api/n8n", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    
+
     const text = await resp.text();
-    
+
     if (resp.ok) {
-      setStatus(`Enviado: ${text}`);
-      showToast("success", "Procesado correctamente");
+      // Webhook responde inmediato → dejamos el trabajo “en cola”
+      setProgress("queued");
+      setStatus(text || "n8n recibió el trabajo");
+      showToast("info", "Enviado. n8n está procesando…");
     } else {
+      setProgress("error");
+      setSendLocked(false); // permitimos reintentar
       setStatus(`Error ${resp.status}: ${text}`);
       showToast("error", `n8n respondió con error ${resp.status}`);
     }
   } catch (e) {
     console.error("Error enviando a n8n:", e);
+    setProgress("error");
+    setSendLocked(false);
     showToast("error", "Error de conexión con n8n");
   } finally {
     setIsSending(false);
   }
 };
+
 
   // Utils
   function indexToColumnLetter(index) {
@@ -409,7 +422,43 @@ export default function SheetsToN8N() {
           </p>
         )}
       </div>
+      {/* Banner de progreso */}
+{progress !== "idle" && (
+  <div className="mt-4 rounded-xl border bg-gray-50 p-3 text-sm text-gray-700 flex items-center gap-2">
+    {progress === "sending" && <span className="inline-block size-2 rounded-full bg-blue-600 animate-pulse" />}
+    {progress === "queued"  && <span className="inline-block size-2 rounded-full bg-amber-500 animate-pulse" />}
+    {progress === "error"   && <span className="inline-block size-2 rounded-full bg-rose-600" />}
 
+    <span className="font-medium">
+      {progress === "sending" && "Enviando a n8n…"}
+      {progress === "queued"  && "n8n está trabajando. Puedes seguir en la app; en breve verás los resultados en tu hoja."}
+      {progress === "error"   && "Ocurrió un error. Revisa la consola o el panel de n8n."}
+    </span>
+
+    {spreadsheetId && (
+      <a
+        href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`}
+        target="_blank" rel="noreferrer"
+        className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border hover:bg-gray-100"
+      >
+        Abrir hoja
+        <svg xmlns="http://www.w3.org/2000/svg" className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M7 17L17 7M8 7h9v9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </a>
+    )}
+
+    {/* Desbloqueo manual por si hace falta reintentar sin cambiar parámetros */}
+    {sendLocked && progress !== "sending" && (
+      <button
+        onClick={() => { setSendLocked(false); setProgress("idle"); }}
+        className="ml-2 text-xs underline text-gray-500 hover:text-gray-700"
+      >
+        Desbloquear
+      </button>
+    )}
+  </div>
+)}
       <div className="bg-white rounded-2xl shadow hover:shadow-lg transition-shadow duration-200 p-6 space-y-6 ring-1 ring-gray-100">
         {/* Auth */}
         <div className="flex items-center justify-between">
@@ -643,28 +692,36 @@ export default function SheetsToN8N() {
             {spreadsheetId && sheetName ? `Listo: Col ${colLetter} · ${headers?.[selectedColIndex] ?? "(sin encabezado)"}` : ""}
           </p>
           <button
-            onClick={handleSendToN8N}
-            disabled={!spreadsheetId || !sheetName || isSending}
-            className="group inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white shadow hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600"
-          >
-            {isSending ? (
-              <>
-                <svg className="size-4 animate-spin" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v3a5 5 0 0 0-5 5H4z" />
-                </svg>
-                Enviando…
-              </>
-            ) : (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M22 2L11 13" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M22 2l-7 20-4-9-9-4 20-7z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Enviar a n8n
-              </>
-            )}
-          </button>
+  onClick={handleSendToN8N}
+  disabled={!spreadsheetId || !sheetName || isSending || sendLocked}
+  className="group inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white shadow hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600"
+>
+  {isSending ? (
+    <>
+      <svg className="size-4 animate-spin" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v3a5 5 0 0 0-5 5H4z" />
+      </svg>
+      Enviando…
+    </>
+  ) : sendLocked ? (
+    <>
+      <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M10 6H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M10 10a2 2 0 1 0 4 0V6a2 2 0 1 0-4 0v4z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      Enviado (bloqueado)
+    </>
+  ) : (
+    <>
+      <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M22 2L11 13" strokeWidth="2" strokeLinecap="round" />
+        <path d="M22 2l-7 20-4-9-9-4 20-7z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      Enviar a n8n
+    </>
+  )}
+</button>
         </div>
       </div>
 
