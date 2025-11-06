@@ -1,7 +1,9 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
 
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+const GOOGLE_CLIENT_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+  "923015740783-jf88ictnu24ofn4raoul82khbqnvhfpc.apps.googleusercontent.com";
 
 export default function SheetsToN8N() {
   // Estado de librerías y auth
