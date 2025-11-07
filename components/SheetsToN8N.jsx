@@ -59,6 +59,9 @@ export default function SheetsToN8N() {
   // 'idle' | 'sending' | 'queued' | 'error'
   const [progress, setProgress] = useState("idle"); 
   const [sendLocked, setSendLocked] = useState(false);
+  const [progressPct, setProgressPct] = useState(0);
+  const [polling, setPolling] = useState(false);
+
   // Toast helper
   const showToast = (type, message, timeout = 2600) => {
     setToast({ open: true, type, message });
@@ -321,14 +324,28 @@ useEffect(() => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-
-    const text = await resp.text();
+    const meta = {
+      spreadsheetId,
+      sheetName,
+      col: columnaRespuesta,        // p.ej. "P"
+      startRow: preguntaRow,        // p.ej. 2
+      endRow: respuestaRow          // p.ej. 521
+    };
 
     if (resp.ok) {
-      // Webhook responde inmediato → dejamos el trabajo “en cola”
       setProgress("queued");
-      setStatus(text || "n8n recibió el trabajo");
+      setStatus("n8n está trabajando. Puedes seguir en la app; en breve verás los resultados en tu hoja.");
+      setProgressPct(0);
+      startPolling(meta);    // 👈 dispara el seguimiento
       showToast("info", "Enviado. n8n está procesando…");
+    }
+
+    await resp.text().catch(()=>null);
+
+if (resp.ok) {
+  setProgress("queued");
+  setStatus("n8n está trabajando. Puedes seguir en la app; en breve verás los resultados en tu hoja.");
+  showToast("info", "Enviado. n8n está procesando…");
     } else {
       setProgress("error");
       setSendLocked(false); // permitimos reintentar
@@ -370,6 +387,63 @@ useEffect(() => {
     if (/\s/.test(name)) return `'${name}'`;
     return name;
   }
+
+  async function readFilledCount({ spreadsheetId, sheetName, col, startRow, endRow }) {
+  // Usa gapi ya autenticado
+  window.gapi.client.setToken({ access_token: token });
+  const range = `${escapeSheetName(sheetName)}!${col}${startRow}:${col}${endRow}`;
+  const res = await window.gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range,
+    valueRenderOption: "UNFORMATTED_VALUE",
+  });
+  const rows = res.result.values || [];
+  // Cuenta celdas no vacías ("" o undefined se consideran vacías)
+  let filled = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const v = rows[i]?.[0];
+    if (v !== undefined && String(v).trim() !== "") filled++;
+  }
+  const total = (endRow - startRow + 1);
+  return { filled, total, pct: Math.round((filled / total) * 100) };
+}
+
+function startPolling(meta) {
+  if (!token) return; // necesita estar logueado a Google
+  setPolling(true);
+  setProgressPct(0);
+
+  // poll cada 2.5s
+  const intervalMs = 2500;
+  const id = setInterval(async () => {
+    try {
+      const { pct } = await readFilledCount(meta);
+      setProgressPct(pct);
+
+      if (pct >= 100) {
+        clearInterval(id);
+        setPolling(false);
+        setProgress("done");
+        setStatus("¡Listo! Ya puedes revisar tu hoja.");
+        showToast("success", "Procesamiento completado");
+      }
+    } catch (e) {
+      console.error("Polling error:", e);
+      // No abortamos; intentamos en el siguiente tick
+    }
+  }, intervalMs);
+
+  // Por si el componente se desmonta:
+  startPolling._id && clearInterval(startPolling._id);
+  startPolling._id = id;
+}
+
+
+  // Helpers
+  // === helpers para el anillo de progreso ===
+const R = 16;                       // radio del círculo "activo"
+const C = 2 * Math.PI * R;          // circunferencia
+const dashOffset = C - (progressPct / 100) * C; // offset según %
 
   // Render
   return (
@@ -424,22 +498,62 @@ useEffect(() => {
       </div>
       {/* Banner de progreso */}
 {progress !== "idle" && (
-  <div className="mt-4 rounded-xl border bg-gray-50 p-3 text-sm text-gray-700 flex items-center gap-2">
-    {progress === "sending" && <span className="inline-block size-2 rounded-full bg-blue-600 animate-pulse" />}
-    {progress === "queued"  && <span className="inline-block size-2 rounded-full bg-amber-500 animate-pulse" />}
-    {progress === "error"   && <span className="inline-block size-2 rounded-full bg-rose-600" />}
+  <div className={`mt-4 rounded-xl border p-3 text-sm flex items-center gap-3
+                   ${progress === "done" ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                                          : "bg-gray-50 border-gray-200 text-gray-700"}`}>
+    {/* Anillo / Estado */}
+    {progress === "sending" ? (
+      // spinner mientras se manda el payload al webhook
+      <svg className="size-6 animate-spin text-blue-600" viewBox="0 0 24 24">
+        <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+        <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v3a5 5 0 0 0-5 5H4z" />
+      </svg>
+    ) : progress === "queued" ? (
+      // anillo con % en vivo
+      <div className="relative grid place-items-center">
+        <svg width="36" height="36" viewBox="0 0 36 36" className="shrink-0">
+          {/* base */}
+          <circle cx="18" cy="18" r={R} fill="none" stroke="#e5e7eb" strokeWidth="4" />
+          {/* progreso */}
+          <circle
+            cx="18" cy="18" r={R} fill="none"
+            stroke="currentColor" strokeWidth="4" strokeLinecap="round"
+            strokeDasharray={C} strokeDashoffset={dashOffset}
+            className="text-amber-500 transition-[stroke-dashoffset] duration-500 ease-out -rotate-90 origin-center"
+          />
+        </svg>
+        <span className="absolute text-[11px] tabular-nums font-medium">{progressPct}%</span>
+      </div>
+    ) : progress === "done" ? (
+      // éxito
+      <svg xmlns="http://www.w3.org/2000/svg" className="size-6 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <circle cx="12" cy="12" r="10" strokeWidth="2" className="opacity-30" />
+        <path d="M7 12l3 3 7-7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ) : (
+      // error
+      <svg xmlns="http://www.w3.org/2000/svg" className="size-6 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <circle cx="12" cy="12" r="10" strokeWidth="2" className="opacity-30" />
+        <path d="M8 8l8 8M8 16l8-8" strokeWidth="2.5" strokeLinecap="round" />
+      </svg>
+    )}
 
+    {/* Mensaje */}
     <span className="font-medium">
       {progress === "sending" && "Enviando a n8n…"}
       {progress === "queued"  && "n8n está trabajando. Puedes seguir en la app; en breve verás los resultados en tu hoja."}
+      {progress === "done"    && "¡Listo! Ya puedes revisar tu hoja."}
       {progress === "error"   && "Ocurrió un error. Revisa la consola o el panel de n8n."}
     </span>
 
+    {/* Botón abrir hoja */}
     {spreadsheetId && (
       <a
         href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`}
         target="_blank" rel="noreferrer"
-        className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border hover:bg-gray-100"
+        className={`ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-lg border transition
+                    ${progress === "done" ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700"
+                                          : "bg-white text-gray-700 hover:bg-gray-100"}`}
       >
         Abrir hoja
         <svg xmlns="http://www.w3.org/2000/svg" className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -448,8 +562,8 @@ useEffect(() => {
       </a>
     )}
 
-    {/* Desbloqueo manual por si hace falta reintentar sin cambiar parámetros */}
-    {sendLocked && progress !== "sending" && (
+    {/* Desbloquear (si lo usas) */}
+    {sendLocked && progress !== "sending" && progress !== "done" && (
       <button
         onClick={() => { setSendLocked(false); setProgress("idle"); }}
         className="ml-2 text-xs underline text-gray-500 hover:text-gray-700"
