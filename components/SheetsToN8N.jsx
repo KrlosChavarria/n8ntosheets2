@@ -268,18 +268,15 @@ useEffect(() => {
     showToast("success", "Spreadsheet seleccionado desde URL/ID");
   };
 
-  // Enviar datos a n8n a través del proxy
-  const handleSendToN8N = async () => {
+ const handleSendToN8N = async () => {
   if (sendLocked) {
     showToast("info", "Ya se envió. Espera a que n8n procese o cambia algún parámetro.");
     return;
   }
-
   if (!spreadsheetId || !sheetName) {
     showToast("error", "Selecciona spreadsheet y hoja");
     return;
   }
-
   if (!values || values.length === 0) {
     showToast("error", "No hay datos cargados de la hoja");
     return;
@@ -287,13 +284,13 @@ useEffect(() => {
 
   try {
     setIsSending(true);
-    setSendLocked(true);        // 🔒 bloqueamos reintentos
+    setSendLocked(true);
     setProgress("sending");
 
-    const nombrePregunta = headers[selectedColIndex] || "";
+    const nombrePregunta   = headers[selectedColIndex] || "";
     const respuestaAbierta = safeCell(values, preguntaRow - 1, selectedColIndex);
     const columnaRespuesta = indexToColumnLetter(selectedColIndex2);
-    const headerRespuesta = headers[selectedColIndex2] || "";
+    const headerRespuesta  = headers[selectedColIndex2] || "";
 
     if (!respuestaAbierta || respuestaAbierta.toString().trim() === "") {
       showToast("error", "La celda de pregunta está vacía");
@@ -319,37 +316,38 @@ useEffect(() => {
 
     console.log("📤 Enviando a n8n:", payload);
 
+    // Meta para polling (contar respuestas llenas)
+    const endRowDetected = lastDataRow(values, selectedColIndex, preguntaRow);
+    const meta = {
+      spreadsheetId,
+      sheetName,
+      col: columnaRespuesta,
+      startRow: preguntaRow,
+      endRow: endRowDetected,
+    };
+
     const resp = await fetch("/api/n8n", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const meta = {
-      spreadsheetId,
-      sheetName,
-      col: columnaRespuesta,        // p.ej. "P"
-      startRow: preguntaRow,        // p.ej. 2
-      endRow: respuestaRow          // p.ej. 521
-    };
 
-    if (resp.ok) {
+    let payloadResp = null;
+    try { payloadResp = await resp.json(); } catch { /* puede venir vacío */ }
+
+    const ok = resp.status >= 200 && resp.status < 400;
+
+    if (ok) {
       setProgress("queued");
       setStatus("n8n está trabajando. Puedes seguir en la app; en breve verás los resultados en tu hoja.");
       setProgressPct(0);
-      startPolling(meta);    // 👈 dispara el seguimiento
+      startPolling(meta);
       showToast("info", "Enviado. n8n está procesando…");
-    }
-
-    await resp.text().catch(()=>null);
-
-if (resp.ok) {
-  setProgress("queued");
-  setStatus("n8n está trabajando. Puedes seguir en la app; en breve verás los resultados en tu hoja.");
-  showToast("info", "Enviado. n8n está procesando…");
     } else {
       setProgress("error");
-      setSendLocked(false); // permitimos reintentar
-      setStatus(`Error ${resp.status}: ${text}`);
+      setSendLocked(false);
+      const msg = payloadResp?.body || payloadResp?.message || `HTTP ${resp.status}`;
+      setStatus(`Error al enviar a n8n: ${msg}`);
       showToast("error", `n8n respondió con error ${resp.status}`);
     }
   } catch (e) {
@@ -361,6 +359,7 @@ if (resp.ok) {
     setIsSending(false);
   }
 };
+
 
 
   // Utils
@@ -380,6 +379,17 @@ if (resp.ok) {
     const row = matrix[rowIdx] || [];
     return row[colIdx] ?? "";
   }
+
+  function lastDataRow(valuesMatrix, colIdx, startAtRow = 2) {
+  const rows = valuesMatrix?.length || 0;
+  if (!rows) return startAtRow;
+  for (let r = rows - 1; r >= startAtRow - 1; r--) {
+    const v = valuesMatrix[r]?.[colIdx];
+    if (v !== undefined && String(v).trim() !== "") return r + 1;
+  }
+  return startAtRow;
+}
+
 
   function escapeSheetName(name) {
     // Cubre nombres con espacios o caracteres especiales

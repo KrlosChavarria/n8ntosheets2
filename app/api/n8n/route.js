@@ -1,7 +1,7 @@
 // app/api/n8n/route.js
 export const runtime = "edge";
 
-const N8N_URL = "https://auto.n8npoli.io/webhook/da35bcfb-3f79-439e-a368-712400c896b2?waitForExecution=true";
+const N8N_URL = "https://auto.n8npoli.io/webhook/da35bcfb-3f79-439e-a368-712400c896b2";
 
 export async function POST(req) {
   try {
@@ -13,9 +13,17 @@ export async function POST(req) {
       body: JSON.stringify(body),
     });
 
-    const text = await r.text();
-    // Devuelve tal cual lo que responda n8n
-    return new Response(text || "OK", {
+    // Si n8n respondió (200-399), lo consideramos “en cola”.
+    if (r.status >= 200 && r.status < 400) {
+      return new Response(JSON.stringify({ status: "queued" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Si n8n respondió con error, propagamos el código y un texto breve
+    const text = await r.text().catch(() => "");
+    return new Response(JSON.stringify({ status: "error", code: r.status, body: text || null }), {
       status: r.status,
       headers: { "Content-Type": "application/json" },
     });
@@ -27,7 +35,6 @@ export async function POST(req) {
   }
 }
 
-// opcional: healthcheck
 export async function GET() {
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,
