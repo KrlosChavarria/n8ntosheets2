@@ -317,13 +317,16 @@ useEffect(() => {
     console.log("📤 Enviando a n8n:", payload);
 
     // Meta para polling (contar respuestas llenas)
-    const endRowDetected = lastDataRow(values, selectedColIndex, preguntaRow);
+    const endRowQ = lastDataRow(values, selectedColIndex, preguntaRow);
+    const dataRows = Math.max(0, endRowQ - preguntaRow + 1);
+    const startRowR = respuestaRow;
+    const endRowR   = respuestaRow + dataRows - 1;
     const meta = {
       spreadsheetId,
       sheetName,
       col: columnaRespuesta,
-      startRow: preguntaRow,
-      endRow: endRowDetected,
+      startRow: startRowR,
+      endRow: endRowR,
     };
 
     const resp = await fetch("/api/n8n", {
