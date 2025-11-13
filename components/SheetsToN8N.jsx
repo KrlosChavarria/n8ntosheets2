@@ -10,6 +10,8 @@ export default function SheetsToN8N() {
   const [gisLoaded, setGisLoaded] = useState(false);
   const [gapiLoaded, setGapiLoaded] = useState(false);
   const [token, setToken] = useState(null);
+  const [permitirVacios, setPermitirVacios] = useState(true);
+
 
   // UI
   const [status, setStatus] = useState("");
@@ -301,12 +303,10 @@ useEffect(() => {
     const columnaRespuesta = indexToColumnLetter(selectedColIndex2);
     const headerRespuesta  = headers[selectedColIndex2] || "";
 
-    if (!respuestaAbierta || respuestaAbierta.toString().trim() === "") {
-      showToast("error", "La celda de pregunta está vacía");
-      setIsSending(false);
-      setSendLocked(false);
-      setProgress("idle");
-      return;
+    const preguntaEstaVacia =
+      !respuestaAbierta || String(respuestaAbierta).trim() === "";
+    if (preguntaEstaVacia) {
+      showToast("info", "Enviando aunque la celda esté vacía (n8n filtrará).");
     }
 
     const payload = {
@@ -315,7 +315,7 @@ useEffect(() => {
       preguntaColumna: colLetter,
       preguntaHeader: nombrePregunta,
       preguntaFila: preguntaRow,
-      preguntaValor: respuestaAbierta,
+      preguntaValor: preguntaEstaVacia ? "" : respuestaAbierta,
       respuestaColumna: columnaRespuesta,
       respuestaHeader: headerRespuesta,
       respuestaFila: respuestaRow,
